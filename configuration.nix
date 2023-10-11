@@ -15,7 +15,7 @@
 #
 #Infinity config {{{
 # Let's me boot {{{
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports =
@@ -34,7 +34,6 @@
   boot.kernelModules = [ "zenpower" ];
 
   boot.initrd.kernelModules = [ "amdgpu" ];
-  services.xserver.videoDrivers = [ "amdgpu" ];
   systemd.tmpfiles.rules = [
     "L+    /opt/rocm/hip   -    -    -     -    ${pkgs.hip}"
   ];
@@ -43,11 +42,17 @@
   # Pick only one of the below networking options.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
+# river 
+  programs.river.enable = true; 
 
   # Virtualization {{{
   virtualisation.libvirtd.enable = true;
   programs.dconf.enable = true;
-  environment.systemPackages = with pkgs; [ virt-manager ];
+  environment.systemPackages = with pkgs; [ virt-manager (pkgs.wrapOBS {
+    plugins = with pkgs.obs-studio-plugins; [
+      wlrobs
+    ];
+  }) ];
   virtualisation.libvirtd.qemu.ovmf.enable = true;
   environment.sessionVariables.LIBVIRT_DEFAULT_URI = ["qemu:///system"];
 #}}}
@@ -55,7 +60,7 @@
   time.timeZone = "Europe/Zagreb";
 #}}}
 
-  # X stuff{{{
+  # Video stuff{{{
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
@@ -68,25 +73,45 @@
   };
 
   # Enable the X11 windowing system.
-  services.xserver.enable = true;
-  services.xserver.displayManager.startx.enable = true;
-  services.xserver.windowManager.awesome.enable = true;
-  services.xserver.excludePackages = [ pkgs.xterm ];
+#  services.xserver.enable = true;
+#  services.xserver.displayManager.startx.enable = true;
+#  services.xserver.windowManager.awesome.enable = true;
+#  services.xserver.excludePackages = [ pkgs.xterm ];
+
   hardware.opengl.enable = true;
   hardware.opengl.driSupport = true;
+  programs.river.extraPackages = lib.mkForce [];
 #}}}
 #}}}
- # Services {{{
-   #adb {{{
+# Services {{{
+
+   # adb {{{
      programs.adb.enable = true;
 #}}}
+# Firejail {{{
+programs.firejail.enable = true;
+programs.firejail.wrappedBinaries = {
+  firefox = {
+    executable = "${lib.getBin pkgs.firefox}/bin/firefox";
+    profile = "${pkgs.firejail}/etc/firejail/firefox.profile";
+  };
+  mpv = {
+    executable = "${lib.getBin pkgs.mpv}/bin/mpv";
+    profile = "${pkgs.firejail}/etc/firejail/mpv.profile";
+  };
+}; 
 
+#}}}
+# Input remmaper and tailscale {{{
 services.input-remapper.enable = true;
 services.tailscale.enable = true;
 services.tailscale.useRoutingFeatures = "both";
-
+#}}}
+# tor {{{
 services.tor.enable = true;
 services.tor.client.enable = true;
+#}}}
+# else {{{
 boot.supportedFilesystems = [ "ntfs" ];
 
 nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -101,8 +126,7 @@ programs.steam = {
   services.xserver.layout = "us";
   services.xserver.xkbOptions = "eurosign:e,caps:escape";
   
-  services.teamviewer.enable = true;
-
+#}}}
 # lutris {{{
   hardware.opengl.driSupport32Bit = true;
  # environment.systemPackages = with pkgs; [
@@ -124,7 +148,6 @@ programs.steam = {
   # Printing {{{
   # services.printing.enable = true;
 #}}}
-
   # Sound {{{
 #  sound.enable = true;
 #  hardware.pulseaudio.enable = true;
@@ -140,7 +163,6 @@ programs.steam = {
   jack.enable = true;
 };
 #}}}
-
   # AMD {{{
    # {{{ Vulkan
    hardware.opengl.extraPackages = with pkgs; [
@@ -159,6 +181,7 @@ programs.steam = {
     noto-fonts-cjk
     noto-fonts-emoji
     liberation_ttf
+    line-awesome
     fira-code
     fira-code-symbols
     mplus-outline-fonts.githubRelease
@@ -168,7 +191,7 @@ programs.steam = {
 
   # Enable unsafe packages
   nixpkgs.config.allowUnfree = true;  
-
+  
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.infinity = {
     isNormalUser = true;
@@ -178,12 +201,12 @@ programs.steam = {
       autoPatchelfHook
       aseprite
       appimage-run
-      awesome
       brave
       blender
       blender-hip
       bun
       cava
+      cargo
       cbonsai
       cool-retro-term
       clang
@@ -194,16 +217,19 @@ programs.steam = {
         withVencord = true;
       })
       easyeffects
+      fcft
+      fuzzel
       fish
       firefox
-      firejail
       flameshot
       flatpak
       fluffychat
       gcc
+      grim
       git
+      gimp
+      glib
       gnome.gnome-disk-utility
-      gnome.nautilus
       gnome-usage
       gnome.gnome-software
       godot_4
@@ -215,7 +241,9 @@ programs.steam = {
       kdenlive
       keepassxc
       kitty
+      killall
       krita
+      lua
       legendary-gl
       libstdcxx5
       libnotify
@@ -229,23 +257,26 @@ programs.steam = {
       lmms
       lolcat
       lutris
+      mako
       mc
       mpv
-      nitrogen
+      ncspot
+      nushell
       neovim
       neo-cowsay
       nodejs_18
       nvtop-amd
-      osu-lazer
-      obs-studio
+      pixman
       pokemonsay
       proxychains
+      playerctl
       prismlauncher
       pavucontrol
       protonup-qt
       protontricks
       python3
       tor
+      slurp
       steam-run
       stdenv.cc.cc.lib
       scrcpy 
@@ -253,20 +284,24 @@ programs.steam = {
       spotify
       syncthing
       svkbd
-      tigervnc
+      swaylock-effects
+      swww
       tree
       unzip
       virtualbox
+      wlrctl
+      wl-clipboard
       wget
-      weather
       wine64
       winetricks
       udisks
       qemu
       qownnotes
       qpwgraph
-      xautoclick
-      xsecurelock
+      xdg-utils
+      xdg-desktop-portal
+      xdg-desktop-portal-wlr
+      yambar
       zenmonitor
       zig
    ];
@@ -320,5 +355,7 @@ programs.steam = {
 }
 #}}}
 #}}}
+
+
 
 # vim:foldmethod=marker
