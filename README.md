@@ -1,2 +1,2 @@
 # infinity-setup
-just my nixossetup
+just my nixos setup
